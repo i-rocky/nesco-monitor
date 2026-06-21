@@ -1,0 +1,8 @@
+The seven-segment digits on this site are rendered with DSEG7 Classic,
+part of the DSEG font family by keshikan.
+
+  Copyright (c) 2020, keshikan (https://www.keshikan.net)
+  Licensed under the SIL Open Font License, Version 1.1.
+  https://github.com/keshikan/DSEG  ·  https://scripts.sil.org/OFL
+
+Only the bundled DSEG7Classic-Bold.woff2 is redistributed here, unmodified.

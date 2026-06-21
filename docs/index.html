@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>nesco-monitor — your prepaid meter's daily spending, in Discord</title>
+<meta name="description" content="A Go daemon that reads a NESCO prepaid electricity account once a day and posts an accurate daily-consumption chart to Discord — staying correct across recharges and NESCO's balance cache." />
+<meta name="theme-color" content="#0a0a0c" />
+<meta property="og:title" content="nesco-monitor" />
+<meta property="og:description" content="Your prepaid meter's daily spending, charted every morning in Discord." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0a0c'/%3E%3Cpath d='M17 4 8 18h6l-1 10 9-14h-6z' fill='%23ffb627'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#top"><span class="dot"></span> nesco-monitor</a>
+  <div class="nav-links">
+    <a href="#problem" class="lbl">the&nbsp;problem</a>
+    <a href="#post" class="lbl">the&nbsp;post</a>
+    <a href="#start" class="lbl">quickstart</a>
+    <a href="https://github.com/i-rocky/nesco-monitor" class="ghbtn">GitHub ↗</a>
+  </div>
+</nav>
+
+<header class="hero wrap" id="top">
+  <div class="hero-grid">
+    <div class="reveal in">
+      <p class="eyebrow">Prepaid electricity · <b>Asia/Dhaka</b></p>
+      <h1>Your meter's spending,<br><span class="hl">charted every morning.</span></h1>
+      <p class="lead">
+        nesco-monitor reads a NESCO prepaid account once a day and posts a clean
+        daily-consumption chart to your Discord — keeping the numbers honest across
+        recharges and NESCO's flaky balance cache.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/i-rocky/nesco-monitor">View on GitHub</a>
+        <a class="btn ghost" href="#start">Quickstart ↓</a>
+      </div>
+    </div>
+
+    <!-- signature: a live prepaid-meter readout -->
+    <div class="meter reveal in" aria-hidden="true">
+      <div class="meter-top">
+        <span class="meter-brand">NESCO · PREPAID</span>
+        <span>kWh · BDT</span>
+      </div>
+      <div class="lcd" id="lcd">
+        <div class="lcd-label">Remaining balance (Tk.)</div>
+        <div class="readout">
+          <span class="taka">৳</span>
+          <span class="lcd-digits">
+            <span class="dseg lcd-ghost">8888.88</span>
+            <span class="dseg lcd-value" id="lcdValue">1284.50</span>
+          </span>
+        </div>
+        <div class="flash" id="meterFlash"></div>
+      </div>
+      <div class="meter-bottom">
+        <span class="status" id="meterStatus"><span class="led" id="meterLed"></span> LIVE</span>
+        <span>METER&nbsp; 99999999999</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section" id="problem">
+  <div class="wrap">
+    <p class="eyebrow">The hard part</p>
+    <h2 class="reveal">Why a balance makes a bad chart</h2>
+    <p class="sub reveal">Spending is just the day-to-day drop in balance. Two real-world quirks break that math — and most trackers fall for both.</p>
+    <div class="problem-grid">
+      <svg class="saw reveal" viewBox="0 0 520 240" role="img" aria-label="Balance over a month: a sawtooth that declines daily and jumps up on each recharge.">
+        <line x1="20" y1="210" x2="500" y2="210" stroke="rgba(255,255,255,0.12)" />
+        <line x1="20" y1="30" x2="20" y2="210" stroke="rgba(255,255,255,0.08)" />
+        <polyline fill="none" stroke="#ffb627" stroke-width="2.5" stroke-linejoin="round"
+          points="20,50 70,82 120,112 170,142 170,58 220,88 270,118 320,148 370,176 370,86 420,116 470,146 500,162" />
+        <circle cx="170" cy="58" r="5" fill="#36e0c8" />
+        <circle cx="370" cy="86" r="5" fill="#36e0c8" />
+        <text x="178" y="50" fill="#36e0c8" font-size="11" font-family="IBM Plex Mono, monospace">recharge</text>
+        <text x="378" y="78" fill="#36e0c8" font-size="11" font-family="IBM Plex Mono, monospace">recharge</text>
+        <text x="26" y="26" fill="#8b8b94" font-size="10" font-family="IBM Plex Mono, monospace">balance ৳</text>
+        <text x="452" y="228" fill="#8b8b94" font-size="10" font-family="IBM Plex Mono, monospace">→ time</text>
+      </svg>
+      <ul class="problem-list">
+        <li>Recharges jump the balance up.
+          <span>A naive day-over-day diff reads that as a huge negative — or a spike. nesco-monitor adds the recharged energy back, so a top-up day shows real usage.</span>
+        </li>
+        <li>NESCO caches yesterday's number.
+          <span>For the first hour after midnight the panel often serves a stale balance. It polls at 05:00, after the cache clears, and drops any reading identical to the last.</span>
+        </li>
+        <li>Gaps read as broken.
+          <span>Stale or missing days leave holes and catch-up spikes. Consumption is spread evenly across the span instead, so the line stays continuous.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="post">
+  <div class="wrap">
+    <p class="eyebrow">Every morning</p>
+    <h2 class="reveal">What lands in your channel</h2>
+    <p class="sub reveal">One message a day: the balance, the change since yesterday, and the month's chart — with an <b>@here</b> only when you're actually running low.</p>
+    <div class="post reveal">
+      <div class="post-head">
+        <div class="avatar">৳</div>
+        <div>
+          <span class="post-name">NESCO Monitor<span class="bot">APP</span></span>
+          <div class="post-time">Today at 05:00</div>
+        </div>
+      </div>
+      <div class="embed">
+        <div class="embed-row">
+          <div><div class="embed-k">Balance</div><div class="embed-v amber">৳1,284.50</div></div>
+          <div><div class="embed-k">Account</div><div class="embed-v">12345678</div></div>
+        </div>
+        <div class="embed-delta">Change since last poll: <b>−267.00 BDT</b> (was 1551.50)</div>
+      </div>
+      <img class="chart-img" src="assets/sample-chart.png" alt="Daily spending line chart for June, around 267 BDT per day on average." loading="lazy" />
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Under the hood</p>
+    <h2 class="reveal">Built to stay accurate</h2>
+    <p class="sub reveal">Three corrections turn a noisy prepaid balance into a chart you can trust.</p>
+    <div class="cards">
+      <div class="card reveal"><div class="ic">↑ ＋</div><h3>Recharge-aware</h3><p>Energy credited by each top-up is added back over the interval it lands in — so a recharge day reads as real consumption, never a gap or a negative spike.</p></div>
+      <div class="card reveal"><div class="ic">◷</div><h3>Cache-resilient</h3><p>Polls at 05:00 Asia/Dhaka, five hours after the midnight refresh, and skips any reading identical to the previous one.</p></div>
+      <div class="card reveal"><div class="ic">▰▱▰</div><h3>Span-smoothed</h3><p>Consumption between two readings is spread evenly across the days they cover, so stale or missing days fill in as a smooth line.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">One small daemon</p>
+    <h2 class="reveal">Wakes once a day, then sleeps</h2>
+    <p class="sub reveal">A ~14&nbsp;MB statically-linked binary in a <code>scratch</code> image. Point it at an account and a webhook.</p>
+    <div class="term reveal">
+      <div class="term-bar"><span class="b r"></span><span class="b y"></span><span class="b g"></span><span class="t">nesco-monitor — Asia/Dhaka</span></div>
+      <div class="term-body">
+        <div class="ln"><span class="prompt">$</span> <span class="cmd" id="termCmd"></span><span class="cursor" id="termCursor"></span></div>
+        <div id="termLog">
+          <div class="ln"><span class="ok">›</span> nesco-monitor starting&nbsp; <span class="k">account=</span><span class="v">12345678</span>&nbsp; <span class="k">poll_at=</span><span class="v">05:00 Asia/Dhaka</span></div>
+          <div class="ln"><span class="ok">›</span> polling NESCO&nbsp; <span class="k">trigger=</span><span class="v">startup</span></div>
+          <div class="ln"><span class="ok">›</span> got balance&nbsp; <span class="k">balance=</span><span class="v">1284.50</span>&nbsp; <span class="k">meter=</span><span class="v">99999999999</span></div>
+          <div class="ln"><span class="ok">›</span> scraped recharges&nbsp; <span class="k">count=</span><span class="v">7</span></div>
+          <div class="ln"><span class="ok">›</span> posted daily update&nbsp; <span class="k">history_points=</span><span class="v">42</span></div>
+          <div class="ln"><span class="ok">›</span> waiting for next daily tick&nbsp; <span class="k">next=</span><span class="v">2026-06-22T05:00+06:00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="start">
+  <div class="wrap">
+    <p class="eyebrow">Quickstart</p>
+    <h2 class="reveal">Run it with Docker</h2>
+    <p class="sub reveal">The SQLite file lives in a named volume, so your balance and recharge history survive restarts.</p>
+    <div class="code reveal">
+      <button class="copy" type="button">copy</button>
+<pre><span class="cyan">docker</span> run -d <span class="fl">\</span>
+  --name nesco-monitor <span class="fl">\</span>
+  --restart unless-stopped <span class="fl">\</span>
+  --env-file .env <span class="fl">\</span>
+  -e <span class="amber">DB_PATH=/data/nesco.db</span> <span class="fl">\</span>
+  -v nesco-data:/data <span class="fl">\</span>
+  wpkpda/nesco-monitor:latest</pre>
+    </div>
+    <p class="note">Set <code>NESCO_ACCOUNT_NO</code> and <code>DISCORD_WEBHOOK_URL</code> in <code>.env</code>. Multi-arch build (amd64 + arm64), full configuration, and a from-source path are in the <a href="https://github.com/i-rocky/nesco-monitor#readme">README</a>.</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="row">
+      <div><span style="color:var(--ink)">nesco-monitor</span> · Go · SQLite · Discord</div>
+      <div>
+        <a href="https://github.com/i-rocky/nesco-monitor">GitHub</a> &nbsp;·&nbsp;
+        <a href="https://github.com/i-rocky/nesco-monitor#readme">README</a> &nbsp;·&nbsp;
+        <a href="assets/sample-chart.png">sample chart</a>
+      </div>
+    </div>
+    <p class="fine">Readings shown here are illustrative. Seven-segment display uses the DSEG font by keshikan (SIL OFL 1.1). Not affiliated with NESCO.</p>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

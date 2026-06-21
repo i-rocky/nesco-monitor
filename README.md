@@ -1,11 +1,26 @@
+<div align="center">
+
 # nesco-monitor
 
-Standalone Go program that polls a single NESCO prepaid electricity account
+**Your prepaid electricity meter's daily spending, charted every morning in Discord.**
+
+[![Live site](https://img.shields.io/badge/demo-i--rocky.github.io%2Fnesco--monitor-ffb627)](https://i-rocky.github.io/nesco-monitor/)
+![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+![Docker image](https://img.shields.io/badge/docker-wpkpda%2Fnesco--monitor-2496ED?logo=docker&logoColor=white)
+![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-555)
+
+![Daily spending chart](docs/assets/sample-chart.png)
+
+</div>
+
+A standalone Go program that polls a single NESCO prepaid electricity account
 **once per day**, stores balance and recharge history in SQLite, renders a
-monthly spending chart, and posts it to a Discord channel via webhook. Sends a
-separate `@here` warning if the balance drops below a configurable threshold.
+monthly spending chart, and posts it to a Discord channel via webhook — with a
+separate `@here` warning when the balance drops below a threshold.
 
 Self-contained: its own `go.mod`, no shared imports, ~14 MB scratch Docker image.
+
+→ **Live overview & demo: https://i-rocky.github.io/nesco-monitor/**
 
 ## How it works
 
@@ -125,6 +140,7 @@ The 05:00 Asia/Dhaka poll time and the monthly chart window are intentionally
 | `scheduler.go`           | `NextTick` (next 05:00 Asia/Dhaka) |
 | `*_test.go`              | Parser, store, scheduler, chart, and dedup unit tests |
 | `Dockerfile`             | Multi-stage Alpine build → scratch runtime |
+| `docs/`                  | Project website (GitHub Pages) |
 
 ## Notes & limitations
 
@@ -149,3 +165,8 @@ and timezone conditions, the recharge-aware span-distribution spending math
 (validated against real production data), and duplicate-read skipping.
 `chart_sample_test.go` is a manual-inspection harness that writes sample PNGs to
 `./samples/`.
+
+---
+
+<sub>Not affiliated with NESCO. The seven-segment display on the website uses the
+DSEG font by keshikan (SIL OFL 1.1).</sub>
